@@ -162,7 +162,7 @@ export async function main(denops: Denops): Promise<void> {
                   open: true,
                 }),
               );
-              await denops.cmd(`e ${e.data}`);
+              await denops.cmd(`tab drop ${e.data}`);
             } else {
               clog(`data is null !`);
               socket.send(
