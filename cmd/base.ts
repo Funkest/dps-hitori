@@ -1,18 +1,13 @@
-import {
-  isAbsolute,
-  join,
-  normalize,
-} from "https://deno.land/std@0.185.0/path/mod.ts";
+// =============================================================================
+// File        : base.ts
+// Author      : yukimemi
+// Last Change : 2025/01/02 18:01:13.
+// =============================================================================
 
-import {
-  Command,
-  EnumType,
-} from "https://deno.land/x/cliffy@v0.25.7/command/mod.ts";
-import {
-  ensureArray,
-  ensureNumber,
-  ensureString,
-} from "https://deno.land/x/unknownutil@v2.1.0/mod.ts";
+import { isAbsolute, join, normalize } from "jsr:@std/path@1.0.8";
+
+import { Command, EnumType } from "jsr:@cliffy/command@1.0.0-rc.7";
+import { z } from "npm:zod@3.24.2";
 
 const logLevelType = new EnumType(["debug", "info", "warn", "error"]);
 
@@ -22,22 +17,44 @@ function isListening(port: number): boolean {
     const server = Deno.listen({ port });
     server.close();
     return false;
-  } catch {
+  } catch (e) {
+    // console.warn(e);
     return true;
   }
 }
 
-async function openVim(cmd: string, args: [(string | undefined)?]) {
+async function win2wsl(path: string): Promise<string> {
+  if (path[0] !== "/") {
+    const cmd = new Deno.Command("wsl", {
+      args: ["-e", "wslpath", path],
+    });
+    const { stdout } = await cmd.output();
+    return new TextDecoder().decode(stdout).trim();
+  }
+  return path;
+}
+
+async function openVim(cmd: string[], args: [(string | undefined)?]) {
   console.log({ cmd, args });
-  const command = new Deno.Command(ensureString(cmd), {
-    args: ensureArray<string>(args),
+  const cmds = z.string().array().parse(cmd);
+  const cmdHead = cmds[0];
+  const cmdTail = cmds.slice(1);
+  const escapeArgs = await Promise.all(z.string().array().parse(args).map(async (a) => {
+    if (a.startsWith("-") || cmdHead !== "wsl") {
+      return a;
+    }
+    return await win2wsl(a);
+  }));
+  console.log({ cmdHead, cmdTail, escapeArgs });
+  const command = new Deno.Command(cmdHead, {
+    args: cmdTail.concat(escapeArgs),
   });
   const child = command.spawn();
   const status = await child.status;
   console.log({ status });
 }
 
-export function createCmd(cmd: string, denoArgs: string[]) {
+export function createCmd(cmd: string[], denoArgs: string[]) {
   return new Command()
     .name("hitori")
     .version("0.1.2")
@@ -55,7 +72,9 @@ export function createCmd(cmd: string, denoArgs: string[]) {
     })
     .arguments("[input]")
     .action(async (options, ...args) => {
-      if (isListening(ensureNumber(options.port))) {
+      console.log({ cmd, denoArgs, options, args });
+      if (isListening(z.number().parse(options.port))) {
+        console.log(`server is running !`);
         const ws = new WebSocket(`ws://localhost:${options.port}`);
         // Resolve path.
         const a = args.map((x) => {
@@ -82,6 +101,7 @@ export function createCmd(cmd: string, denoArgs: string[]) {
           ws.close();
         };
       } else {
+        console.log(`server is not running !`);
         await openVim(cmd, args);
       }
     })

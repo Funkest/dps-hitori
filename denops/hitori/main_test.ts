@@ -1,9 +1,11 @@
 // =============================================================================
-// File        : hitori_nvim-qt.ts
+// File        : main_test.ts
 // Author      : yukimemi
-// Last Change : 2025/01/02 15:37:31.
+// Last Change : 2024/08/12 01:51:18.
 // =============================================================================
 
-import { createCmd } from "./base.ts";
+import { assertEquals } from "@std/assert";
 
-await createCmd(["nvim-qt"], Deno.args);
+Deno.test("main", () => {
+  assertEquals(1, 1);
+});
