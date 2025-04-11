@@ -1,5 +1,7 @@
 # hitori.vim
 
+## THIS FORK
+**At the time of installation, support for neovim-qt was incomplete, so I had forked it. However, since those changes have now been incorporated (into the main project), this fork is no longer necessary.**
 
 <img src="./image.gif">
 
